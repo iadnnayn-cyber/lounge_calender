@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>ラウンジ当番カレンダー</title>
+<style>
+  /* --- PC向け基本スタイル（従来のまま維持） --- */
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: #f4f7f9;
+    margin: 0;
+    padding: 20px;
+    color: #333;
+  }
+  .container {
+    max-width: 850px;
+    margin: 0 auto;
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    overflow: hidden;
+  }
+  header {
+    background: #2b5b84;
+    color: #fff;
+    padding: 16px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header h1 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .nav-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  button {
+    background: #ffffff;
+    color: #2b5b84;
+    border: none;
+    border-radius: 6px;
+    padding: 6px 14px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.2s, opacity 0.2s;
+  }
+  button:hover:not(:disabled) {
+    background: #e2eaf1;
+  }
+  button:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: none;
+    font-size: 14px;
+    font-weight: bold;
+    background: #fff;
+    color: #2b5b84;
+    cursor: pointer;
+  }
+  .month-view {
+    display: none;
+    padding: 20px;
+  }
+  .month-view.active {
+    display: block;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  th, td {
+    border: 1px solid #e2e8f0;
+    width: 14.28%;
+    vertical-align: top;
+    box-sizing: border-box;
+  }
+  th {
+    background: #f8fafc;
+    padding: 10px 4px;
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: #475569;
+  }
+  td {
+    height: 95px;
+    padding: 6px;
+    background: #ffffff;
+  }
+  td.empty {
+    background: #fafafa;
+  }
+  .sat { color: #2563eb; }
+  .sun { color: #dc2626; }
+  .day-num {
+    font-weight: bold;
+    font-size: 13px;
+    margin-bottom: 6px;
+  }
+  .duty-badge {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    padding: 5px 6px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: bold;
+    text-align: center;
+    word-break: break-all;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+
+  /* --- スマホ向けレスポンシブ最適化（幅600px以下） --- */
+  @media (max-width: 600px) {
+    body {
+      padding: 6px 4px;
+    }
+    .container {
+      border-radius: 8px;
+    }
+    header {
+      padding: 10px 12px;
+    }
+    header h1 {
+      font-size: 16px;
+      width: 100%;
+      text-align: center;
+    }
+    .nav-controls {
+      width: 100%;
+      justify-content: center;
+      gap: 8px;
+    }
+    button {
+      padding: 6px 10px;
+      font-size: 13px;
+    }
+    select {
+      padding: 6px 8px;
+      font-size: 13px;
+    }
+    .month-view {
+      padding: 8px 4px;
+    }
+    th {
+      padding: 6px 0;
+      font-size: 12px;
+    }
+    /* 95px固定を解除し、最小限の高さに収める */
+    td {
+      height: 58px;
+      min-height: 58px;
+      padding: 3px 2px;
+    }
+    .day-num {
+      font-size: 11px;
+      margin-bottom: 2px;
+      line-height: 1;
+    }
+    .duty-badge {
+      font-size: 10.5px;
+      padding: 2px 1px;
+      border-radius: 4px;
+      line-height: 1.15;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <header>
+    <h1>【ラウンジ当番表】</h1>
+    <div class="nav-controls">
+      <button id="prevBtn" onclick="changeMonth(-1)">＜ 前月</button>
+      <select id="monthSelect" onchange="selectMonth(this.value)">
+        <option value="2026-10" selected>2026年 10月</option>
+        <option value="2026-11">2026年 11月</option>
+        <option value="2026-12">2026年 12月</option>
+        <option value="2027-01">2027年 1月</option>
+        <option value="2027-02">2027年 2月</option>
+        <option value="2027-03">2027年 3月</option>
+      </select>
+      <button id="nextBtn" onclick="changeMonth(1)">次月 ＞</button>
+    </div>
+  </header>
+  <div id="view-2026-10" class="month-view active">
+    <table>
+      <thead><tr>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th class="sat">土</th>
+        <th class="sun">日</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td><div class="day-num">1</div></td>
+          <td><div class="day-num">2</div></td>
+          <td><div class="day-num" class="sat">3</div></td>
+          <td><div class="day-num" class="sun">4</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">5</div></td>
+          <td><div class="day-num">6</div></td>
+          <td><div class="day-num">7</div></td>
+          <td><div class="day-num">8</div></td>
+          <td><div class="day-num">9</div></td>
+          <td><div class="day-num" class="sat">10</div></td>
+          <td><div class="day-num" class="sun">11</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">12</div></td>
+          <td><div class="day-num">13</div><div class="duty-badge">秦くん・濱本くん</div></td>
+          <td><div class="day-num">14</div></td>
+          <td><div class="day-num">15</div><div class="duty-badge">北田くん・安田さん</div></td>
+          <td><div class="day-num">16</div></td>
+          <td><div class="day-num" class="sat">17</div><div class="duty-badge">高木くん・久保田くん</div></td>
+          <td><div class="day-num" class="sun">18</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">19</div><div class="duty-badge">福田(匠)くん・鈴木くん</div></td>
+          <td><div class="day-num">20</div></td>
+          <td><div class="day-num">21</div><div class="duty-badge">福田(隼)くん・三浦くん</div></td>
+          <td><div class="day-num">22</div></td>
+          <td><div class="day-num">23</div><div class="duty-badge">長門さん・橋本くん</div></td>
+          <td><div class="day-num" class="sat">24</div></td>
+          <td><div class="day-num" class="sun">25</div><div class="duty-badge">須藤くん・河野くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">26</div></td>
+          <td><div class="day-num">27</div><div class="duty-badge">小林くん・伊添くん</div></td>
+          <td><div class="day-num">28</div></td>
+          <td><div class="day-num">29</div><div class="duty-badge">松尾くん・西田くん</div></td>
+          <td><div class="day-num">30</div></td>
+          <td><div class="day-num" class="sat">31</div><div class="duty-badge">石井くん・矢津田くん</div></td>
+          <td class="empty"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="view-2026-11" class="month-view">
+    <table>
+      <thead><tr>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th class="sat">土</th>
+        <th class="sun">日</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td><div class="day-num" class="sun">1</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">2</div><div class="duty-badge">大野くん・工藤くん</div></td>
+          <td><div class="day-num">3</div></td>
+          <td><div class="day-num">4</div><div class="duty-badge">勝山くん・吉野くん</div></td>
+          <td><div class="day-num">5</div></td>
+          <td><div class="day-num">6</div><div class="duty-badge">宇賀くん・滝田くん</div></td>
+          <td><div class="day-num" class="sat">7</div></td>
+          <td><div class="day-num" class="sun">8</div><div class="duty-badge">手嶋さん・澤田くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">9</div></td>
+          <td><div class="day-num">10</div><div class="duty-badge">木下くん・坂本くん</div></td>
+          <td><div class="day-num">11</div></td>
+          <td><div class="day-num">12</div><div class="duty-badge">市川くん・瀧本くん</div></td>
+          <td><div class="day-num">13</div></td>
+          <td><div class="day-num" class="sat">14</div><div class="duty-badge">森くん・塩田くん</div></td>
+          <td><div class="day-num" class="sun">15</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">16</div><div class="duty-badge">竹田くん・松村くん</div></td>
+          <td><div class="day-num">17</div></td>
+          <td><div class="day-num">18</div><div class="duty-badge">桶谷くん・長谷井くん</div></td>
+          <td><div class="day-num">19</div></td>
+          <td><div class="day-num">20</div><div class="duty-badge">雲くん・吉良くん</div></td>
+          <td><div class="day-num" class="sat">21</div></td>
+          <td><div class="day-num" class="sun">22</div><div class="duty-badge">細田・五領田くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">23</div></td>
+          <td><div class="day-num">24</div><div class="duty-badge">佐藤くん・安田くん</div></td>
+          <td><div class="day-num">25</div></td>
+          <td><div class="day-num">26</div><div class="duty-badge">坂さん・三宅くん</div></td>
+          <td><div class="day-num">27</div></td>
+          <td><div class="day-num" class="sat">28</div><div class="duty-badge">山田(煌)くん・長西くん</div></td>
+          <td><div class="day-num" class="sun">29</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">30</div><div class="duty-badge">山田(将)くん・津川くん</div></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="view-2026-12" class="month-view">
+    <table>
+      <thead><tr>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th class="sat">土</th>
+        <th class="sun">日</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="empty"></td>
+          <td><div class="day-num">1</div></td>
+          <td><div class="day-num">2</div><div class="duty-badge">秦くん・濱本くん</div></td>
+          <td><div class="day-num">3</div></td>
+          <td><div class="day-num">4</div><div class="duty-badge">北田くん・安田さん</div></td>
+          <td><div class="day-num" class="sat">5</div></td>
+          <td><div class="day-num" class="sun">6</div><div class="duty-badge">高木くん・久保田くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">7</div></td>
+          <td><div class="day-num">8</div><div class="duty-badge">福田(匠)くん・鈴木くん</div></td>
+          <td><div class="day-num">9</div></td>
+          <td><div class="day-num">10</div><div class="duty-badge">福田(隼)くん・三浦くん</div></td>
+          <td><div class="day-num">11</div></td>
+          <td><div class="day-num" class="sat">12</div><div class="duty-badge">長門さん・橋本くん</div></td>
+          <td><div class="day-num" class="sun">13</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">14</div><div class="duty-badge">須藤くん・河野くん</div></td>
+          <td><div class="day-num">15</div></td>
+          <td><div class="day-num">16</div><div class="duty-badge">小林くん・伊添くん</div></td>
+          <td><div class="day-num">17</div></td>
+          <td><div class="day-num">18</div><div class="duty-badge">松尾くん・西田くん</div></td>
+          <td><div class="day-num" class="sat">19</div></td>
+          <td><div class="day-num" class="sun">20</div><div class="duty-badge">石井くん・矢津田くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">21</div></td>
+          <td><div class="day-num">22</div><div class="duty-badge">大野くん・工藤くん</div></td>
+          <td><div class="day-num">23</div></td>
+          <td><div class="day-num">24</div><div class="duty-badge">勝山くん・吉野くん</div></td>
+          <td><div class="day-num">25</div></td>
+          <td><div class="day-num" class="sat">26</div><div class="duty-badge">宇賀くん・滝田くん</div></td>
+          <td><div class="day-num" class="sun">27</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">28</div><div class="duty-badge">手嶋さん・澤田くん</div></td>
+          <td><div class="day-num">29</div></td>
+          <td><div class="day-num">30</div><div class="duty-badge">木下くん・坂本くん</div></td>
+          <td><div class="day-num">31</div></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="view-2027-01" class="month-view">
+    <table>
+      <thead><tr>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th class="sat">土</th>
+        <th class="sun">日</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td><div class="day-num">1</div><div class="duty-badge">市川くん・瀧本くん</div></td>
+          <td><div class="day-num" class="sat">2</div></td>
+          <td><div class="day-num" class="sun">3</div><div class="duty-badge">森くん・塩田くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">4</div></td>
+          <td><div class="day-num">5</div><div class="duty-badge">竹田くん・松村くん</div></td>
+          <td><div class="day-num">6</div></td>
+          <td><div class="day-num">7</div><div class="duty-badge">桶谷くん・長谷井くん</div></td>
+          <td><div class="day-num">8</div></td>
+          <td><div class="day-num" class="sat">9</div><div class="duty-badge">雲くん・吉良くん</div></td>
+          <td><div class="day-num" class="sun">10</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">11</div><div class="duty-badge">細田・五領田くん</div></td>
+          <td><div class="day-num">12</div></td>
+          <td><div class="day-num">13</div><div class="duty-badge">佐藤くん・安田くん</div></td>
+          <td><div class="day-num">14</div></td>
+          <td><div class="day-num">15</div><div class="duty-badge">坂さん・三宅くん</div></td>
+          <td><div class="day-num" class="sat">16</div></td>
+          <td><div class="day-num" class="sun">17</div><div class="duty-badge">山田(煌)くん・長西くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">18</div></td>
+          <td><div class="day-num">19</div><div class="duty-badge">山田(将)くん・津川くん</div></td>
+          <td><div class="day-num">20</div></td>
+          <td><div class="day-num">21</div><div class="duty-badge">秦くん・濱本くん</div></td>
+          <td><div class="day-num">22</div></td>
+          <td><div class="day-num" class="sat">23</div><div class="duty-badge">北田くん・安田さん</div></td>
+          <td><div class="day-num" class="sun">24</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">25</div><div class="duty-badge">高木くん・久保田くん</div></td>
+          <td><div class="day-num">26</div></td>
+          <td><div class="day-num">27</div><div class="duty-badge">福田(匠)くん・鈴木くん</div></td>
+          <td><div class="day-num">28</div></td>
+          <td><div class="day-num">29</div><div class="duty-badge">福田(隼)くん・三浦くん</div></td>
+          <td><div class="day-num" class="sat">30</div></td>
+          <td><div class="day-num" class="sun">31</div><div class="duty-badge">長門さん・橋本くん</div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="view-2027-02" class="month-view">
+    <table>
+      <thead><tr>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th class="sat">土</th>
+        <th class="sun">日</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><div class="day-num">1</div></td>
+          <td><div class="day-num">2</div><div class="duty-badge">須藤くん・河野くん</div></td>
+          <td><div class="day-num">3</div></td>
+          <td><div class="day-num">4</div><div class="duty-badge">小林くん・伊添くん</div></td>
+          <td><div class="day-num">5</div></td>
+          <td><div class="day-num" class="sat">6</div><div class="duty-badge">松尾くん・西田くん</div></td>
+          <td><div class="day-num" class="sun">7</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">8</div><div class="duty-badge">石井くん・矢津田くん</div></td>
+          <td><div class="day-num">9</div></td>
+          <td><div class="day-num">10</div><div class="duty-badge">大野くん・工藤くん</div></td>
+          <td><div class="day-num">11</div></td>
+          <td><div class="day-num">12</div><div class="duty-badge">勝山くん・吉野くん</div></td>
+          <td><div class="day-num" class="sat">13</div></td>
+          <td><div class="day-num" class="sun">14</div><div class="duty-badge">宇賀くん・滝田くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">15</div></td>
+          <td><div class="day-num">16</div><div class="duty-badge">手嶋さん・澤田くん</div></td>
+          <td><div class="day-num">17</div></td>
+          <td><div class="day-num">18</div><div class="duty-badge">木下くん・坂本くん</div></td>
+          <td><div class="day-num">19</div></td>
+          <td><div class="day-num" class="sat">20</div><div class="duty-badge">市川くん・瀧本くん</div></td>
+          <td><div class="day-num" class="sun">21</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">22</div><div class="duty-badge">森くん・塩田くん</div></td>
+          <td><div class="day-num">23</div></td>
+          <td><div class="day-num">24</div><div class="duty-badge">竹田くん・松村くん</div></td>
+          <td><div class="day-num">25</div></td>
+          <td><div class="day-num">26</div><div class="duty-badge">桶谷くん・長谷井くん</div></td>
+          <td><div class="day-num" class="sat">27</div></td>
+          <td><div class="day-num" class="sun">28</div><div class="duty-badge">雲くん・吉良くん</div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <div id="view-2027-03" class="month-view">
+    <table>
+      <thead><tr>
+        <th>月</th>
+        <th>火</th>
+        <th>水</th>
+        <th>木</th>
+        <th>金</th>
+        <th class="sat">土</th>
+        <th class="sun">日</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td><div class="day-num">1</div></td>
+          <td><div class="day-num">2</div><div class="duty-badge">細田・五領田くん</div></td>
+          <td><div class="day-num">3</div></td>
+          <td><div class="day-num">4</div><div class="duty-badge">佐藤くん・安田くん</div></td>
+          <td><div class="day-num">5</div></td>
+          <td><div class="day-num" class="sat">6</div><div class="duty-badge">坂さん・三宅くん</div></td>
+          <td><div class="day-num" class="sun">7</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">8</div><div class="duty-badge">山田(煌)くん・長西くん</div></td>
+          <td><div class="day-num">9</div></td>
+          <td><div class="day-num">10</div><div class="duty-badge">山田(将)くん・津川くん</div></td>
+          <td><div class="day-num">11</div></td>
+          <td><div class="day-num">12</div><div class="duty-badge">秦くん・濱本くん</div></td>
+          <td><div class="day-num" class="sat">13</div></td>
+          <td><div class="day-num" class="sun">14</div><div class="duty-badge">北田くん・安田さん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">15</div></td>
+          <td><div class="day-num">16</div><div class="duty-badge">高木くん・久保田くん</div></td>
+          <td><div class="day-num">17</div></td>
+          <td><div class="day-num">18</div><div class="duty-badge">福田(匠)くん・鈴木くん</div></td>
+          <td><div class="day-num">19</div></td>
+          <td><div class="day-num" class="sat">20</div><div class="duty-badge">福田(隼)くん・三浦くん</div></td>
+          <td><div class="day-num" class="sun">21</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">22</div><div class="duty-badge">長門さん・橋本くん</div></td>
+          <td><div class="day-num">23</div></td>
+          <td><div class="day-num">24</div><div class="duty-badge">須藤くん・河野くん</div></td>
+          <td><div class="day-num">25</div></td>
+          <td><div class="day-num">26</div><div class="duty-badge">小林くん・伊添くん</div></td>
+          <td><div class="day-num" class="sat">27</div></td>
+          <td><div class="day-num" class="sun">28</div><div class="duty-badge">松尾くん・西田くん</div></td>
+        </tr>
+        <tr>
+          <td><div class="day-num">29</div></td>
+          <td><div class="day-num">30</div><div class="duty-badge">石井くん・矢津田くん</div></td>
+          <td><div class="day-num">31</div></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+          <td class="empty"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<script>
+  const months = ['2026-10', '2026-11', '2026-12', '2027-01', '2027-02', '2027-03'];
+  let currentIndex = months.indexOf("2026-10");
+  if (currentIndex === -1) currentIndex = 0;
+
+  function updateView() {
+    months.forEach((m, idx) => {
+      const el = document.getElementById('view-' + m);
+      if (el) {
+        el.classList.toggle('active', idx === currentIndex);
+      }
+    });
+
+    const sel = document.getElementById('monthSelect');
+    if (sel) sel.value = months[currentIndex];
+
+    document.getElementById('prevBtn').disabled = (currentIndex === 0);
+    document.getElementById('nextBtn').disabled = (currentIndex === months.length - 1);
+  }
+
+  function changeMonth(delta) {
+    const nextIdx = currentIndex + delta;
+    if (nextIdx >= 0 && nextIdx < months.length) {
+      currentIndex = nextIdx;
+      updateView();
+    }
+  }
+
+  function selectMonth(val) {
+    const idx = months.indexOf(val);
+    if (idx !== -1) {
+      currentIndex = idx;
+      updateView();
+    }
+  }
+
+  updateView();
+</script>
+</body>
+</html>
